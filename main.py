@@ -6,6 +6,7 @@ import cv2
 import io
 
 from hands.detector import detect_pose
+from location.analyze import router as location_router
 
 app = FastAPI()
 
@@ -18,3 +19,5 @@ async def analyze_pose(file: UploadFile = File(...)):
 
     result = detect_pose(image_bgr)
     return JSONResponse(content=result)
+
+app.include_router(location_router)
