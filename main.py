@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 import numpy as np
 import cv2
@@ -10,6 +11,14 @@ from location.analyze import router as location_router
 
 app = FastAPI()
 
+# CORS 설정 추가
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # ["http://localhost:8001", "https://melog.store"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 @app.post("/analyze/pose")
 async def analyze_pose(file: UploadFile = File(...)):
     contents = await file.read()
