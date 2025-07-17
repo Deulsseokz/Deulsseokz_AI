@@ -18,7 +18,7 @@ def detect_pose(hand_img):
         # 하트 포즈는 두 손 필요
         if len(hands_landmarks) == 2:
             if is_finger_heart(hands_landmarks[0].landmark, hands_landmarks[1].landmark):
-                return {"pose": "Finger heart"}
+                return {"pose": "Heart"}
 
         for hand in hands_landmarks:
             lm = hand.landmark
