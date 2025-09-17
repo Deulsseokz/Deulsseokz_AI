@@ -20,7 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/analyze/pose")
+@app.post("/analyze")
 async def analyze_pose(file: UploadFile = File(...)):
     contents = await file.read()
     image = Image.open(io.BytesIO(contents)).convert("RGB")
