@@ -13,4 +13,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # copy project
 FROM base
 COPY . /app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+#CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["gunicorn", "main:app", "--workers", "2", "--timeout", "90", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8001"]

@@ -5,11 +5,12 @@ from PIL import Image
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device)
 
-def classify_location(image: Image.Image, candidates: list[str]):
+def classify_location(image: Image.Image, candidates: dict[str, str]):
     image_input = preprocess(image).unsqueeze(0).to(device)
 
+    # 후보 설명만 뽑아서 텍스트 임베딩
     text_inputs = torch.cat([
-        clip.tokenize(f"사진 속 장소는 {place}") for place in candidates
+        clip.tokenize(desc) for desc in candidates.values()
     ]).to(device)
 
     with torch.no_grad():
@@ -22,7 +23,11 @@ def classify_location(image: Image.Image, candidates: list[str]):
         similarity = (100.0 * image_features @ text_features.T).softmax(dim=-1)
         best_match_idx = similarity.argmax().item()
 
+    key_list = list(candidates.keys())
+    desc_list = list(candidates.values())
+
     return {
-        "location": candidates[best_match_idx],
+        "location": key_list[best_match_idx],
+        "description": desc_list[best_match_idx],
         "confidence": float(similarity[0][best_match_idx])
     }
