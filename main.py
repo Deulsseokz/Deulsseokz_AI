@@ -1,6 +1,7 @@
 import io
 import json
 import os
+from typing import Optional
 from typing import List, Dict, Callable, Any
 
 import cv2
@@ -31,7 +32,6 @@ DATABASE_URL = f"mysql+mysqldb://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB
 engine = create_engine(DATABASE_URL)
 
 # --- 3. 각 모듈의 실제 분석 함수들을 import ---
-# (TODO: 아래 함수 이름들은 실제 작성하신 함수명으로 정확히 수정해야 합니다)
 from location.clip_model import classify_location  # CLIP 장소 분석 함수
 from pose.detector import analyze_strong_pose   # MediaPipe "StrongPose" 분석 함수
 
@@ -98,9 +98,12 @@ ANALYSIS_DISPATCHER: Dict[str, Callable] = {
 
 @app.post("/analyze")
 async def analyze_challenge(
-        image: UploadFile = File(...),
-        conditions: str = Form(...),
-        place_name: str = Form(...)
+        image: Optional[UploadFile] = File(None),
+        conditions: Optional[str] = Form(None),
+        place_name: Optional[str] = Form(None)
+        # image: UploadFile = File(...),
+        # conditions: str = Form(...),
+        # place_name: str = Form(...)
 ):
     """Django로부터 챌린지 분석 요청을 받아 처리하는 메인 엔드포인트"""
     try:
