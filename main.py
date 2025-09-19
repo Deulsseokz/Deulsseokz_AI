@@ -98,12 +98,12 @@ ANALYSIS_DISPATCHER: Dict[str, Callable] = {
 
 @app.post("/analyze")
 async def analyze_challenge(
-        image: Optional[UploadFile] = File(None),
-        conditions: Optional[str] = Form(None),
-        place_name: Optional[str] = Form(None)
-        # image: UploadFile = File(...),
-        # conditions: str = Form(...),
-        # place_name: str = Form(...)
+        # image: Optional[UploadFile] = File(None),
+        # conditions: Optional[str] = Form(None),
+        # place_name: Optional[str] = Form(None)
+        image: UploadFile = File(...),
+        conditions: str = Form(...),
+        place_name: str = Form(...)
 ):
     """Django로부터 챌린지 분석 요청을 받아 처리하는 메인 엔드포인트"""
     try:
