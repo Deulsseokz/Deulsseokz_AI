@@ -27,7 +27,7 @@ if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_NAME]):
     print("🚨 WARNING: Database environment variables are not fully set. Using placeholders.")
     # raise ConnectionError("Database environment variables are not fully set.")
 
-DATABASE_URL = f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = f"mysql+mysqldb://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(DATABASE_URL)
 
 # --- 3. 각 모듈의 실제 분석 함수들을 import ---
