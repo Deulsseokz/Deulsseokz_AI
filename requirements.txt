@@ -1,29 +1,35 @@
-
+# --- Core FastAPI Server ---
 fastapi
 uvicorn
-opencv-python-headless
+gunicorn
+python-dotenv
+python-multipart
+
+# --- Database Connection ---
+sqlalchemy
+mysqlclient
+django==5.2.4
+
+# --- Image & Data Processing ---
 Pillow
 numpy
-torchvision
+opencv-python-headless
+
+# --- AI / Machine Learning ---
+# For CLIP & Transformers
+transformers
 regex
 ftfy
 sentencepiece
-requests
-python-multipart
-gunicorn
-
 clip @ git+https://github.com/openai/CLIP.git@dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1
 
-# CLIP
+# For MediaPipe
+mediapipe
+
+# For PyTorch (CPU Version)
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
 torchvision
-# MediaPipe
-mediapipe
-# DB 연결용
-sqlalchemy
-mysqlclient
-django
-django==5.2.4
-#.env
-python-dotenv
+
+# --- Utilities ---
+requests
