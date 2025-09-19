@@ -14,7 +14,7 @@ DB_PORT = os.getenv("DB_PORT")
 if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_NAME]):
     raise ConnectionError("Database environment variables are not fully set.")
 
-DATABASE_URL = f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = f"mysql+mysqldb://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(DATABASE_URL)
 
 # --- 2. AI 모델 및 장소 목록 캐시 로드 ---
