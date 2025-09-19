@@ -21,7 +21,7 @@ torch
 mediapipe
 # DB 연결용
 sqlalchemy
-mysqlconnector-python
+mysqlclient
 django
 django==5.2.4
 #.env
