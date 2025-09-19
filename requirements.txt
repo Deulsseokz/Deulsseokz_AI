@@ -23,5 +23,6 @@ mediapipe
 sqlalchemy
 mysqlconnector-python
 django
+django==5.2.4
 #.env
 python-dotenv
