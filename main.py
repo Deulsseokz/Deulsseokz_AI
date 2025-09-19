@@ -98,50 +98,77 @@ ANALYSIS_DISPATCHER: Dict[str, Callable] = {
 
 @app.post("/analyze")
 async def analyze_challenge(
-        # image: Optional[UploadFile] = File(None),
-        # conditions: Optional[str] = Form(None),
-        # place_name: Optional[str] = Form(None)
-        image: UploadFile = File(...),
-        conditions: str = Form(...),
-        place_name: str = Form(...)
+    image: UploadFile = File(...),
+    conditions: str = Form(...),
+    place_name: str = Form(...)
 ):
     """Django로부터 챌린지 분석 요청을 받아 처리하는 메인 엔드포인트"""
+    print("\n" + "="*60)
+    print("✅ [FastAPI] /analyze 엔드포인트 호출됨")
     try:
+        # 요청 값 출력
+        print(f"📥 image.filename: {image.filename}")
+        print(f"📥 place_name: {place_name}")
+        print(f"📥 conditions (raw): {conditions}")
+
+        # 이미지 읽기
         image_bytes = await image.read()
+        print(f"🖼️ image_bytes 길이: {len(image_bytes)} 바이트")
+
+        # PIL 이미지 및 OpenCV 포맷 변환
         image_pil = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-        image_bgr = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB_BGR)
-        conditions_list: List[str] = json.loads(conditions)
+        image_bgr = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
+
+        # conditions 파싱
+        try:
+            conditions_list: List[str] = json.loads(conditions)
+            print(f"📋 conditions_list: {conditions_list}")
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON 파싱 실패: {e}")
+            return JSONResponse(status_code=400, content={"success": False, "message": f"Invalid JSON in 'conditions': {e}"})
+
     except Exception as e:
+        print(f"❌ 입력 처리 중 예외 발생: {e}")
         return JSONResponse(status_code=400, content={"success": False, "message": f"Invalid input: {e}"})
 
+    # 조건 검사 로직
     details_result = {}
     condition_results = []
 
-    # 전달받은 모든 조건에 대해 순서대로 분석 실행
+    print("🚀 조건별 분석 시작")
     for i, keyword in enumerate(conditions_list, 1):
+        print(f"🔍 조건 {i}: {keyword}")
         analysis_function = ANALYSIS_DISPATCHER.get(keyword)
         is_condition_met = False
 
         if analysis_function:
-            result_dict = analysis_function(
-                image_pil=image_pil,
-                image_bgr=image_bgr,
-                expected_place_name=place_name
-            )
-            is_condition_met = result_dict.get("success", False)
+            try:
+                result_dict = analysis_function(
+                    image_pil=image_pil,
+                    image_bgr=image_bgr,
+                    expected_place_name=place_name
+                )
+                is_condition_met = result_dict.get("success", False)
+                print(f"✅ 조건 {i} 결과: {is_condition_met}")
+            except Exception as e:
+                print(f"❌ 조건 {i} 분석 함수에서 예외 발생: {e}")
+        else:
+            print(f"⚠️ 분석 함수 없음: {keyword}")
 
         details_result[f"condition{i}_met"] = is_condition_met
         condition_results.append(is_condition_met)
 
-    # 모든 조건이 True여야만 최종 성공
+    # 최종 결과 판단
     overall_success = all(condition_results) if condition_results else False
     message = "챌린지 모든 조건 충족!" if overall_success else "일부 조건을 만족하지 못했습니다."
+    print(f"🎯 최종 결과: {overall_success} | 메시지: {message}")
 
-    # Django와 약속된 최종 결과 형식으로 반환
     final_response = {
         "success": overall_success,
         "message": message,
         "details": details_result
     }
 
+    print("📤 응답 전송 완료")
+    print("="*60 + "\n")
     return JSONResponse(content=final_response)
