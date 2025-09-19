@@ -41,10 +41,10 @@ CANDIDATE_PROMPTS = list(CANDIDATES.values())
 
 
 def get_place_name(place_id: int) -> str:
-    """메모리에 저장된 캐시에서 placeId로 장소 이름을 찾습니다."""
+    """메모리에 저장된 캐시에서 placeId로 장소 이름을 찾음"""
     return PLACES_CACHE.get(place_id, "Unknown Place")
 
 
 def classify_location(image: Image.Image):
-    """주어진 이미지와 가장 일치하는 장소의 placeId와 확률을 반환합니다."""
+    """주어진 이미지와 가장 일치하는 장소의 placeId와 확률을 반환"""
     # ... (이하 classify_location 함수 내용은 기존과 동일)
