@@ -23,3 +23,5 @@ mediapipe
 sqlalchemy
 mysqlconnector-python
 django
+#.env
+python-dotenv
