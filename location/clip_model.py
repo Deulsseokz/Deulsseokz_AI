@@ -35,9 +35,8 @@ try:
 
             if place_name == "광화문":
                 CANDIDATES[place_id] = (
-                    f"A photo of '{place_name}', the main gate of Gyeongbokgung Palace, "
-                    f"with its distinctive two-tiered roof and three arched entrances, "
-                    f"located in {area}, South Korea. A person is standing in front of it."
+                    f"A photo of '{place_name}' under a clear blue sky. "
+                    f"Two people are posing for a picture in the plaza in front of the gate."
                 )
             else:
                 CANDIDATES[place_id] = (
