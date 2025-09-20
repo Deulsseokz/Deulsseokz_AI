@@ -27,7 +27,7 @@ PLACES_CACHE = {} # {placeId: placeName} 형태의 캐시
 CANDIDATES = {}   # {placeId: prompt} 형태의 후보
 try:
     with engine.connect() as connection:
-        result = connection.execute(text("SELECT placeId, placeName, area FROM places_place"))
+        result = connection.execute(text("SELECT placeId, placeName, area FROM Place"))
         for row in result:
             place_id, place_name, area = row[0], row[1], row[2]
             PLACES_CACHE[place_id] = place_name

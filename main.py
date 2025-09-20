@@ -41,7 +41,7 @@ from pose.detector import analyze_strong_pose
 PLACES_CACHE = {}
 try:
     with engine.connect() as connection:
-        result = connection.execute(text("SELECT placeId, placeName FROM places_place"))
+        result = connection.execute(text("SELECT placeId, placeName FROM Place"))
         for row in result:
             PLACES_CACHE[row[0]] = row[1]
     logger.info(f"✅ Loaded {len(PLACES_CACHE)} places into cache.")
