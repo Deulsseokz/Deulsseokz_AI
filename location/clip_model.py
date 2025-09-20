@@ -47,4 +47,32 @@ def get_place_name(place_id: int) -> str:
 
 def classify_location(image: Image.Image):
     """주어진 이미지와 가장 일치하는 장소의 placeId와 확률을 반환"""
-    # ... (이하 classify_location 함수 내용은 기존과 동일)
+    if not CANDIDATES:
+        return {"error": "Candidates not loaded. Check DB connection."}
+
+    # 1. 이미지와 텍스트 프롬프트를 모델이 이해하도록 전처리
+    inputs = processor(text=CANDIDATE_PROMPTS, images=image, return_tensors="pt", padding=True)
+
+    # 2. 모델을 통해 이미지-텍스트 간 유사도 계산 (추론)
+    # torch.no_grad()는 불필요한 연산을 막아 속도를 높여줒ㅁ
+    with torch.no_grad():
+        outputs = model(**inputs)
+
+    # 3. 계산된 결과(logits)를 확률(%)로 변환
+    logits_per_image = outputs.logits_per_image
+    probs = logits_per_image.softmax(dim=1).squeeze()
+
+    # 4. 가장 높은 확률을 가진 후보의 인덱스를 찾음
+    best_candidate_index = probs.argmax().item()
+
+    # 5. 인덱스를 이용해 placeId, 프롬프트, 확률 값을 가져옴
+    best_place_id = CANDIDATE_IDS[best_candidate_index]
+    best_prob = probs[best_candidate_index].item()
+    best_prompt = CANDIDATE_PROMPTS[best_candidate_index]
+
+    # 6. 결과를 딕셔너리 형태로 반환
+    return {
+        "best_match_place_id": best_place_id,
+        "matched_prompt": best_prompt,
+        "probability": best_prob
+    }
