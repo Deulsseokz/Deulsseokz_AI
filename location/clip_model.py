@@ -32,6 +32,18 @@ try:
             place_id, place_name, area = row[0], row[1], row[2]
             PLACES_CACHE[place_id] = place_name
             CANDIDATES[place_id] = f"A photo of {place_name} in {area}"
+
+            if place_name == "광화문":
+                CANDIDATES[place_id] = (
+                    f"A photo of '{place_name}', the main gate of Gyeongbokgung Palace, "
+                    f"with its distinctive two-tiered roof and three arched entrances, "
+                    f"located in {area}, South Korea. A person is standing in front of it."
+                )
+            else:
+                CANDIDATES[place_id] = (
+                    f"A photo of the '{place_name}', a famous landmark in {area}, South Korea."
+                )
+
     print(f"✅ Successfully loaded {len(PLACES_CACHE)} places into cache.")
 except Exception as e:
     print(f"🚨 FAILED to build candidates from database: {e}")
