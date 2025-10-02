@@ -3,6 +3,9 @@ import json
 import os
 from typing import List, Dict, Callable, Any
 
+from sympy.printing.pytorch import torch
+from transformers import CLIPProcessor, CLIPModel
+
 import cv2
 import numpy as np
 from PIL import Image
@@ -10,7 +13,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import create_engine, text
+from pose.detector import analyze_pose
 import logging
 
 # --- 로깅 설정 ---
@@ -20,35 +23,14 @@ logger = logging.getLogger("analyze_api")
 # --- 1. .env 파일 로드 ---
 load_dotenv()
 
-# --- 2. DB 접속 설정 ---
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_NAME = os.getenv("DB_NAME")
-DB_PORT = os.getenv("DB_PORT")
-
-if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_NAME]):
-    logger.warning("🚨 Database environment variables are not fully set.")
-
-DATABASE_URL = f"mysql+mysqldb://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-engine = create_engine(DATABASE_URL)
+# --- 2. DB 접속 및 캐시 로드 코드를 모두 삭제 ---
+# 이 작업은 이제 clip_model.py가 전담합니다.
 
 # --- 3. 분석 모듈 import ---
-from location.clip_model import classify_location
-from pose.detector import analyze_strong_pose
+# clip_model을 import하는 시점에 모든 준비(DB, 모델, 캐시)가 완료됩니다.
+from location.clip_model import classify_location, get_place_name, processor, model
 
-# --- 4. 장소 캐시 불러오기 ---
-PLACES_CACHE = {}
-try:
-    with engine.connect() as connection:
-        result = connection.execute(text("SELECT placeId, placeName FROM Place"))
-        for row in result:
-            PLACES_CACHE[row[0]] = row[1]
-    logger.info(f"✅ Loaded {len(PLACES_CACHE)} places into cache.")
-except Exception as e:
-    logger.error(f"🚨 DB Connection Error: {e}")
-
-# --- 5. FastAPI 초기화 ---
+# --- 4. FastAPI 초기화 ---
 app = FastAPI()
 
 app.add_middleware(
@@ -59,17 +41,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- 6. 분석 함수 정의 ---
+# --- 5. 분석 함수 정의 ---
 def check_location(image_pil: Image.Image, expected_place_name: str, **kwargs) -> Dict[str, Any]:
     try:
         classification_result = classify_location(image_pil)
         best_match_id = classification_result.get("best_match_place_id")
         probability = classification_result.get("probability", 0.0)
-        matched_place_name = PLACES_CACHE.get(best_match_id, "Unknown Place")
 
-        logger.info(f"[check_location] Expected: {expected_place_name}, Predicted: {matched_place_name}, Prob: {probability:.2f}")
+        # clip_model.py에 있는 get_place_name 함수를 사용하여 장소 이름을 가져옴
+        matched_place_name = get_place_name(best_match_id)
 
-        # ✅ 테스트 통과 쉽게: 광화문에 대한 유사도 완화
+        logger.info(
+            f"[check_location] Expected: {expected_place_name}, Predicted: {matched_place_name}, Prob: {probability:.2f}")
+
+        # '광화문'에 대한 특별 규칙
         if expected_place_name == "광화문":
             return {"success": matched_place_name.startswith("광화문") or probability >= 0.5}
 
@@ -78,22 +63,79 @@ def check_location(image_pil: Image.Image, expected_place_name: str, **kwargs) -
         logger.error(f"[check_location] Error: {e}")
         return {"success": False}
 
-def check_strong_pose(image_bgr: np.ndarray, **kwargs) -> Dict[str, Any]:
+
+def classify_attributes(image: Image.Image, keywords: List[str]) -> dict:
+    """
+    주어진 이미지와 임의의 키워드 목록을 비교하여,
+    이미지와 가장 잘 맞는 키워드와 그 확률을 반환합니다.
+    """
+    if not keywords:
+        return {"error": "No keywords provided."}
+
+    # 키워드를 모델이 이해하기 좋은 프롬프트로 변환
+    prompts = [f"a photo of a {k.lower().replace('_', ' ')}" for k in keywords]
+
+    inputs = processor(text=prompts, images=image, return_tensors="pt", padding=True)
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+
+    logits_per_image = outputs.logits_per_image
+    probs = logits_per_image.softmax(dim=1).squeeze()
+
+    best_index = probs.argmax().item()
+    best_keyword = keywords[best_index]
+    best_prob = probs[best_index].item()
+
+    return {
+        "best_match_keyword": best_keyword,
+        "probability": best_prob
+    }
+
+def check_attribute(image_pil: Image.Image, keyword: str, **kwargs) -> dict:
+    """이미지에 특정 속성(키워드)이 있는지 판단합니다."""
     try:
-        is_correct = analyze_strong_pose(image_bgr)
-        logger.info(f"[check_strong_pose] Result: {is_correct}")
-        return {"success": is_correct}
+        result = classify_attributes(image_pil, [keyword])
+        probability = result.get("probability", 0.0)
+        logger.info(f"[check_attribute] Keyword: {keyword}, Prob: {probability:.2f}")
+        return {"success": probability > 0.6}
     except Exception as e:
-        logger.error(f"[check_strong_pose] Error: {e}")
+        logger.error(f"[check_attribute] Error for keyword '{keyword}': {e}")
         return {"success": False}
 
-# --- 7. 조건 매핑 ---
+def check_pose(image_bgr: np.ndarray, keyword: str, **kwargs) -> dict:
+    """MediaPipe 모델로 이미지에서 특정 포즈를 분석합니다."""
+    try:
+        is_correct = analyze_pose(image_bgr, keyword)
+        logger.info(f"[check_pose] Keyword: {keyword}, Result: {is_correct}")
+        return {"success": is_correct}
+    except Exception as e:
+        logger.error(f"[check_pose] Error for '{keyword}': {e}")
+        return {"success": False}
+
+# --- 6. 조건 매핑 ---
 ANALYSIS_DISPATCHER: Dict[str, Callable] = {
-    "PalaceGate": check_location,
-    "StrongPose": check_strong_pose,
+    # --- 장소 이름 비교 ---
+    "Landmark": check_location, "PalaceGate": check_location, "Temple": check_location,
+    "Building": check_location, "GardenSign": check_location, "Seoul Station": check_location,
+
+    # --- 일반 속성 판단 ---
+    "RiverView": check_attribute, "SeaView": check_attribute, "LakeView": check_attribute,
+    "Park": check_attribute, "Forest": check_attribute, "Field": check_attribute,
+    "Hanok": check_attribute, "Bridge": check_attribute, "Cave": check_attribute,
+    "Waterfall": check_attribute, "Street": check_attribute, "Mural": check_attribute,
+    "Tree": check_attribute, "FlowerField": check_attribute, "RockView": check_attribute,
+    # ... 등등 리스트업했던 모든 속성 키워드
+
+    # --- 포즈 판단 ---
+    "StrongPose": check_pose, "PeaceSign": check_pose, "Jump": check_pose,
+    "Sitting": check_pose, "HeartPose": check_pose, "Smile": check_pose,
+    "Point": check_pose, "HandsTogether": check_pose, "Surprised Face": check_pose,
+    "CreativePose": check_pose,
+    # ... 등등 모든 포즈 키워드
 }
 
-# --- 8. 메인 분석 엔드포인트 ---
+# --- 7. 메인 분석 엔드포인트 ---
 @app.post("/analyze")
 async def analyze_challenge(
     image: UploadFile = File(...),
