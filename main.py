@@ -3,18 +3,22 @@ import json
 import os
 from typing import List, Dict, Callable, Any
 
-from sympy.printing.pytorch import torch
-from transformers import CLIPProcessor, CLIPModel
-
 import cv2
 import numpy as np
+import torch
+import mediapipe as mp
 from PIL import Image
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pose.detector import analyze_pose
 import logging
+
+mp_pose = mp.solutions.pose
+mp_hands = mp.solutions.hands
+pose_detector = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+hands_detector = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.5, max_num_hands=2)
+
 
 # --- 로깅 설정 ---
 logging.basicConfig(level=logging.INFO)
@@ -27,8 +31,10 @@ load_dotenv()
 # 이 작업은 이제 clip_model.py가 전담합니다.
 
 # --- 3. 분석 모듈 import ---
-# clip_model을 import하는 시점에 모든 준비(DB, 모델, 캐시)가 완료됩니다.
-from location.clip_model import classify_location, get_place_name, processor, model
+from location.clip_model import classify_location, get_place_name, classify_attributes, processor, model
+from pose.detector import analyze_pose
+from hands.detector import analyze_hand_gesture
+from face.detector import analyze_face_expression
 
 # --- 4. FastAPI 초기화 ---
 app = FastAPI()
@@ -67,7 +73,7 @@ def check_location(image_pil: Image.Image, expected_place_name: str, **kwargs) -
 def classify_attributes(image: Image.Image, keywords: List[str]) -> dict:
     """
     주어진 이미지와 임의의 키워드 목록을 비교하여,
-    이미지와 가장 잘 맞는 키워드와 그 확률을 반환합니다.
+    이미지와 가장 잘 맞는 키워드와 그 확률을 반환
     """
     if not keywords:
         return {"error": "No keywords provided."}
@@ -93,7 +99,7 @@ def classify_attributes(image: Image.Image, keywords: List[str]) -> dict:
     }
 
 def check_attribute(image_pil: Image.Image, keyword: str, **kwargs) -> dict:
-    """이미지에 특정 속성(키워드)이 있는지 판단합니다."""
+    """이미지에 특정 속성(키워드)이 있는지 판단"""
     try:
         result = classify_attributes(image_pil, [keyword])
         probability = result.get("probability", 0.0)
@@ -104,13 +110,33 @@ def check_attribute(image_pil: Image.Image, keyword: str, **kwargs) -> dict:
         return {"success": False}
 
 def check_pose(image_bgr: np.ndarray, keyword: str, **kwargs) -> dict:
-    """MediaPipe 모델로 이미지에서 특정 포즈를 분석합니다."""
+    """MediaPipe 모델로 이미지에서 특정 포즈를 분석."""
     try:
         is_correct = analyze_pose(image_bgr, keyword)
         logger.info(f"[check_pose] Keyword: {keyword}, Result: {is_correct}")
         return {"success": is_correct}
     except Exception as e:
         logger.error(f"[check_pose] Error for '{keyword}': {e}")
+        return {"success": False}
+
+def check_hand_gesture(image_bgr: np.ndarray, keyword: str, **kwargs) -> dict:
+    """손 포즈 분석을 호출"""
+    try:
+        is_correct = analyze_hand_gesture(image_bgr, keyword)
+        logger.info(f"[check_hand_gesture] Keyword: {keyword}, Result: {is_correct}")
+        return {"success": is_correct}
+    except Exception as e:
+        logger.error(f"[check_hand_gesture] Error for '{keyword}': {e}")
+        return {"success": False}
+
+def check_face_expression(image_bgr: np.ndarray, keyword: str, **kwargs) -> dict:
+    """얼굴 표정 분석을 호출"""
+    try:
+        is_correct = analyze_face_expression(image_bgr, keyword)
+        logger.info(f"[check_face_expression] Keyword: {keyword}, Result: {is_correct}")
+        return {"success": is_correct}
+    except Exception as e:
+        logger.error(f"[check_face_expression] Error for '{keyword}': {e}")
         return {"success": False}
 
 # --- 6. 조건 매핑 ---
@@ -125,14 +151,20 @@ ANALYSIS_DISPATCHER: Dict[str, Callable] = {
     "Hanok": check_attribute, "Bridge": check_attribute, "Cave": check_attribute,
     "Waterfall": check_attribute, "Street": check_attribute, "Mural": check_attribute,
     "Tree": check_attribute, "FlowerField": check_attribute, "RockView": check_attribute,
-    # ... 등등 리스트업했던 모든 속성 키워드
 
     # --- 포즈 판단 ---
-    "StrongPose": check_pose, "PeaceSign": check_pose, "Jump": check_pose,
-    "Sitting": check_pose, "HeartPose": check_pose, "Smile": check_pose,
-    "Point": check_pose, "HandsTogether": check_pose, "Surprised Face": check_pose,
-    "CreativePose": check_pose,
-    # ... 등등 모든 포즈 키워드
+    "StrongPose": check_pose, "Sitting": check_pose,
+    "CreativePose": check_pose, "Deep Bow": check_pose, "Walking": check_pose,
+    "Arms Up": check_pose, "Shielding Eyes": check_pose, "Back View": check_pose,
+    "Crossing Arms": check_pose, "Spreading Arms": check_pose,
+
+    # --- 손 판단 ---
+    "PeaceSign": check_hand_gesture, "HeartPose": check_hand_gesture,
+    "Point": check_hand_gesture, "HandsTogether": check_hand_gesture, "Flower Cup": check_hand_gesture,
+
+    # --- 표정 판단 ---
+    "Smile": check_face_expression,
+    "Surprised Face": check_face_expression,
 }
 
 # --- 7. 메인 분석 엔드포인트 ---

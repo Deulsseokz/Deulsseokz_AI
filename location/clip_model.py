@@ -3,6 +3,7 @@ from PIL import Image
 import torch
 import os
 from sqlalchemy import create_engine, text
+from typing import List
 
 # --- 1. DB 접속 설정 ---
 DB_USER = os.getenv("DB_USER")
@@ -85,5 +86,33 @@ def classify_location(image: Image.Image):
     return {
         "best_match_place_id": best_place_id,
         "matched_prompt": best_prompt,
+        "probability": best_prob
+    }
+
+
+def classify_attributes(image: Image.Image, keywords: List[str]):
+    if not keywords:
+        return {"error": "No keywords provided."}
+
+    # 키워드를 모델이 이해하기 좋은 프롬프트로 변환 ("a photo of a bridge")
+    prompts = [f"a photo of a {k.lower().replace('_', ' ')}" for k in keywords]
+
+    inputs = processor(text=prompts, images=image, return_tensors="pt", padding=True)
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+
+    logits_per_image = outputs.logits_per_image
+    probs = logits_per_image.softmax(dim=1).squeeze()
+
+    # 가장 높은 확률을 가진 키워드의 인덱스를 찾음
+    best_index = probs.argmax().item()
+
+    # 인덱스를 이용해 키워드와 확률을 가져옴
+    best_keyword = keywords[best_index]
+    best_prob = probs[best_index].item()
+
+    return {
+        "best_match_keyword": best_keyword,
         "probability": best_prob
     }
