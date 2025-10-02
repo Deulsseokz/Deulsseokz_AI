@@ -210,7 +210,8 @@ async def analyze_challenge(
                 result_dict = analysis_function(
                     image_pil=image_pil,
                     image_bgr=image_bgr,
-                    expected_place_name=place_name
+                    expected_place_name=place_name,
+                    keyword=keyword
                 )
                 is_condition_met = result_dict.get("success", False)
                 logger.info(f"✅ 조건 {i} 결과: {is_condition_met}")
