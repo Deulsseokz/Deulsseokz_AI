@@ -60,11 +60,8 @@ def check_location(image_pil: Image.Image, expected_place_name: str, **kwargs) -
         logger.info(
             f"[check_location] Expected: {expected_place_name}, Predicted: {matched_place_name}, Prob: {probability:.2f}")
 
-        # '광화문'에 대한 특별 규칙
-        if expected_place_name == "광화문":
-            return {"success": matched_place_name.startswith("광화문") or probability >= 0.5}
+        return {"success": matched_place_name == expected_place_name and probability > 0.5}
 
-        return {"success": matched_place_name == expected_place_name and probability > 0.7}
     except Exception as e:
         logger.error(f"[check_location] Error: {e}")
         return {"success": False}
@@ -104,7 +101,7 @@ def check_attribute(image_pil: Image.Image, keyword: str, **kwargs) -> dict:
         result = classify_attributes(image_pil, [keyword])
         probability = result.get("probability", 0.0)
         logger.info(f"[check_attribute] Keyword: {keyword}, Prob: {probability:.2f}")
-        return {"success": probability > 0.6}
+        return {"success": probability > 0.5}
     except Exception as e:
         logger.error(f"[check_attribute] Error for keyword '{keyword}': {e}")
         return {"success": False}
