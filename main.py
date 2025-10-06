@@ -60,7 +60,7 @@ def check_location(image_pil: Image.Image, expected_place_name: str, **kwargs) -
         logger.info(
             f"[check_location] Expected: {expected_place_name}, Predicted: {matched_place_name}, Prob: {probability:.2f}")
 
-        return {"success": matched_place_name == expected_place_name and probability > 0.5}
+        return {"success": matched_place_name == expected_place_name and probability > 0.1}
 
     except Exception as e:
         logger.error(f"[check_location] Error: {e}")
