@@ -86,9 +86,14 @@ def classify_attributes(image: Image.Image, keywords: List[str]) -> dict:
     logits_per_image = outputs.logits_per_image
     probs = logits_per_image.softmax(dim=1).squeeze()
 
-    best_index = probs.argmax().item()
+    if probs.dim() == 0:  # 텐서가 0차원인지 (값이 하나인지) 확인
+        best_prob = probs.item()
+        best_index = 0  # 어차피 키워드가 하나이므로 인덱스는 0
+    else:  # 원래 로직 (키워드가 여러 개일 때)
+        best_index = probs.argmax().item()
+        best_prob = probs[best_index].item()
+
     best_keyword = keywords[best_index]
-    best_prob = probs[best_index].item()
 
     return {
         "best_match_keyword": best_keyword,
@@ -150,7 +155,7 @@ ANALYSIS_DISPATCHER: Dict[str, Callable] = {
     "Tree": check_attribute, "FlowerField": check_attribute, "RockView": check_attribute,
 
     # --- 포즈 판단 ---
-    "StrongPose": check_pose, "Sitting": check_pose,
+    "StrongPose": check_pose, "Sitting": check_pose, "Jump": check_pose,
     "CreativePose": check_pose, "Deep Bow": check_pose, "Walking": check_pose,
     "Arms Up": check_pose, "Shielding Eyes": check_pose, "Back View": check_pose,
     "Crossing Arms": check_pose, "Spreading Arms": check_pose,
