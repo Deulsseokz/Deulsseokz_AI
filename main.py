@@ -49,22 +49,26 @@ app.add_middleware(
 
 # --- 5. 분석 함수 정의 ---
 def check_location(image_pil: Image.Image, expected_place_name: str, **kwargs) -> Dict[str, Any]:
-    try:
-        classification_result = classify_location(image_pil)
-        best_match_id = classification_result.get("best_match_place_id")
-        probability = classification_result.get("probability", 0.0)
+    # try:
+    #     classification_result = classify_location(image_pil)
+    #     best_match_id = classification_result.get("best_match_place_id")
+    #     probability = classification_result.get("probability", 0.0)
+    #
+    #     # clip_model.py에 있는 get_place_name 함수를 사용하여 장소 이름을 가져옴
+    #     matched_place_name = get_place_name(best_match_id)
+    #
+    #     logger.info(
+    #         f"[check_location] Expected: {expected_place_name}, Predicted: {matched_place_name}, Prob: {probability:.2f}")
+    #
+    #     return {"success": matched_place_name == expected_place_name and probability > 0.1}
+    #
+    # except Exception as e:
+    #     logger.error(f"[check_location] Error: {e}")
+    #     return {"success": False}
 
-        # clip_model.py에 있는 get_place_name 함수를 사용하여 장소 이름을 가져옴
-        matched_place_name = get_place_name(best_match_id)
-
-        logger.info(
-            f"[check_location] Expected: {expected_place_name}, Predicted: {matched_place_name}, Prob: {probability:.2f}")
-
-        return {"success": matched_place_name == expected_place_name and probability > 0.1}
-
-    except Exception as e:
-        logger.error(f"[check_location] Error: {e}")
-        return {"success": False}
+    keyword = kwargs.get('keyword', 'N/A')
+    logger.info(f"[check_location] Keyword: {keyword}. Location check skipped, returning True.")
+    return {"success": True}
 
 
 def classify_attributes(image: Image.Image, keywords: List[str]) -> dict:
