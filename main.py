@@ -163,6 +163,7 @@ ANALYSIS_DISPATCHER: Dict[str, Callable] = {
     # --- 손 판단 ---
     "PeaceSign": check_hand_gesture, "HeartPose": check_hand_gesture,
     "Point": check_hand_gesture, "HandsTogether": check_hand_gesture, "Flower Cup": check_hand_gesture,
+    "Holding Cup": check_hand_gesture,
 
     # --- 표정 판단 ---
     "Smile": check_face_expression,
