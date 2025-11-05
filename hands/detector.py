@@ -6,7 +6,13 @@ import cv2
 mp_hands = mp.solutions.hands
 hands_detector = mp_hands.Hands(min_detection_confidence=0.7, max_num_hands=2)
 
+DEFINED_HAND_KEYWORDS = ["PeaceSign", "HeartPose", "Point", "HandsTogether"]
+
 def analyze_hand_gesture(image_bgr: np.ndarray, keyword: str) -> bool:
+    if keyword not in DEFINED_HAND_KEYWORDS:
+        print(f"✅ Unknown hand gesture keyword: '{keyword}'. Returning True as requested.")
+        return True
+
     image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
     image_rgb.flags.writeable = False
     results = hands_detector.process(image_rgb)
