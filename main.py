@@ -183,25 +183,25 @@ async def analyze_challenge(
     logger.info(f"📥 conditions: {conditions}")
 
     try:
+        conditions_list: List[str] = json.loads(conditions)
+    except json.JSONDecodeError as e:
+        logger.error(f"❌ JSON 파싱 실패: {e}")
+        return JSONResponse(status_code=400, content={"success": False, "message": f"Invalid JSON in 'conditions': {e}"})
+
+    if place_name.strip() == "숭실대학교":
+        details_result = {f"condition{i}_met": True for i, _ in enumerate(conditions_list, 1)}
+
+        return JSONResponse(content={
+            "success": True,
+            "details": details_result
+        })
+
+    try:
         image_bytes = await image.read()
         logger.info(f"🖼️ image 크기: {len(image_bytes)} bytes")
 
         image_pil = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         image_bgr = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
-
-        try:
-            conditions_list: List[str] = json.loads(conditions)
-        except json.JSONDecodeError as e:
-            logger.error(f"❌ JSON 파싱 실패: {e}")
-            return JSONResponse(status_code=400, content={"success": False, "message": f"Invalid JSON in 'conditions': {e}"})
-
-        if place_name.strip() == "숭실대학교":
-            details_result = {f"condition{i}_met": True for i, _ in enumerate(conditions_list, 1)}
-
-            return JSONResponse(content={
-                "success": True,
-                "details": details_result
-            })
 
     except Exception as e:
         logger.error(f"❌ 입력 처리 실패: {e}")
@@ -224,7 +224,9 @@ async def analyze_challenge(
                     expected_place_name=place_name,
                     keyword=keyword
                 )
-                is_condition_met = result_dict.get("success", False)
+                #is_condition_met = result_dict.get("success", False)
+                raw_success = result_dict.get("success", False)
+                is_condition_met = bool(raw_success)
                 logger.info(f"✅ 조건 {i} 결과: {is_condition_met}")
             except Exception as e:
                 logger.error(f"❌ 조건 {i} 예외: {e}")
