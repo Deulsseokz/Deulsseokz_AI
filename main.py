@@ -196,14 +196,6 @@ async def analyze_challenge(
             "details": details_result
         })
 
-    if place_name.strip() == "서울숲":
-        details_result = {f"condition{i}_met": True for i, _ in enumerate(conditions_list, 1)}
-
-        return JSONResponse(content={
-            "success": True,
-            "details": details_result
-        })
-
     try:
         image_bytes = await image.read()
         logger.info(f"🖼️ image 크기: {len(image_bytes)} bytes")
