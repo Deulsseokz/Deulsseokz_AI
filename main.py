@@ -231,7 +231,8 @@ async def analyze_challenge(
             except Exception as e:
                 logger.error(f"❌ 조건 {i} 예외: {e}")
         else:
-            logger.warning(f"⚠️ 알 수 없는 조건: {keyword}")
+            logger.warning(f"⚠️ 알 수 없는 조건: '{keyword}' -> 무조건 성공(True) 처리")
+            is_condition_met = True
 
         details_result[f"condition{i}_met"] = is_condition_met
         condition_results.append(is_condition_met)
